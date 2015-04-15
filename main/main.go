@@ -4,6 +4,7 @@ import (
     "fmt"
     "code.google.com/p/portaudio-go/portaudio"
     "time"
+    "herosynth"
 )
 
 const (
@@ -16,7 +17,7 @@ func main() {
     portaudio.Initialize()
     defer portaudio.Terminate()
 
-    synth := CreateHeroSynth(sampleRate)
+    synth := herosynth.CreateHeroSynth(sampleRate)
 
     var stream, err = portaudio.OpenDefaultStream(0, 2, sampleRate, 0, func (out [][]float32) {
         synth.Render(out)
@@ -29,8 +30,12 @@ func main() {
 
     defer stream.Close()
 
-    synth.Send(NoteOn{32, 1.0})
     stream.Start()
-    time.Sleep(4 * time.Second)
+
+    for i := uint(20); i < 20 + 12; i++ {
+        synth.Send(herosynth.NoteOn{i, 1.0})
+        time.Sleep(500 * time.Millisecond)
+    }
+
     stream.Stop()
 }

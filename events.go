@@ -1,13 +1,13 @@
-package main
+package herosynth
 
 type Event interface {
 }
 
 type NoteOn struct {
-    key int
-    velocity float32
+    Key uint
+    Velocity float64
 }
 
 type NoteOff struct {
-    key int
+    Key uint
 }
