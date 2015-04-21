@@ -9,7 +9,7 @@ var keyFreq [128]float64
 
 func init() {
     for i := 0; i < 128; i++ {
-        keyFreq[i] = 440.0 * math.Pow(2.0, float64((i - 69) / 12.0))
+        keyFreq[i] = 440.0 * math.Pow(2.0, (float64(i) - 69) / 12.0)
     }
 }
 
@@ -50,7 +50,7 @@ func (v *Voice) UpdatePatch(patch *Patch) {
 
     v.envOut = make([]float64, 1, 16)
 
-    v.UpdateKeyAndVelocity(32, 1.0)
+    //v.UpdateKeyAndVelocity(32, 1.0)
 }
 
 func (v *Voice) noteOn(key uint, velocity float64) {
@@ -63,7 +63,8 @@ func (v *Voice) UpdateKeyAndVelocity(key uint, velocity float64) {
     v.key = key
     v.amplitude = velocity
     freq := keyFreq[key & 0x7f]
-    for _, osc := range v.osc {
+    for i := range v.osc {
+        osc := &v.osc[i]
         if !osc.fixedFreq {
             osc.baseFrequency = freq
             osc.UpdateFrequency()

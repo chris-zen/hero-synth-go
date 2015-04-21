@@ -32,9 +32,19 @@ func main() {
 
     stream.Start()
 
-    for i := uint(20); i < 20 + 12; i++ {
-        synth.Send(herosynth.NoteOn{i, 1.0})
-        time.Sleep(500 * time.Millisecond)
+    const C1 = 24
+    const C2 = 36
+    const C3 = 48
+    const C4 = 60
+    for i := uint(0); i < 4; i++ {
+        key := C3 + i * 12
+        synth.Send(herosynth.NoteOn{key + 0, 1.0})
+        synth.Send(herosynth.NoteOn{key + 4, 0.9})
+        synth.Send(herosynth.NoteOn{key + 7, 0.8})
+        time.Sleep(1000 * time.Millisecond)
+        synth.Send(herosynth.NoteOff{key + 0})
+        synth.Send(herosynth.NoteOff{key + 4})
+        synth.Send(herosynth.NoteOff{key + 7})
     }
 
     stream.Stop()

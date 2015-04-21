@@ -1,36 +1,34 @@
 package herosynth
 
 import (
-    "container/list"
     //"fmt"
 )
 
-const defaultPolyphony = 32
+const numKeys uint = 128
 
 type HeroSynth struct {
     sampleRate float64
-    polyphony int
-    runningVoices *list.List
-    availableVoices *list.List
-    voicesByKey map[int][]*Voice
+    voices [numKeys]Voice
+    runningVoices map[uint]bool
+    availableVoices map[uint]bool
     invNumRunningVoices float64
 }
 
 func CreateHeroSynth(sampleRate float64) *HeroSynth {
     synth := &HeroSynth{
         sampleRate: sampleRate,
-        polyphony: defaultPolyphony,
-        runningVoices: list.New(),
-        availableVoices: list.New(),
-        voicesByKey: make(map[int][]*Voice),
+        runningVoices: make(map[uint]bool),
+        availableVoices: make(map[uint]bool),
         invNumRunningVoices: 0.0}
 
     patch := &Patch{}
 
-    for i := 0; i < defaultPolyphony; i++ {
+    for i := uint(0); i < numKeys; i++ {
         var voice *Voice = CreateVoice(synth, patch)
-        voice.id = i
-        synth.availableVoices.PushBack(voice)
+        voice.key = i
+        voice.UpdateKeyAndVelocity(i, 1.0)
+        synth.voices[i] = *voice
+        synth.availableVoices[i] = true
         //fmt.Println(voice)
     }
 
@@ -42,8 +40,8 @@ func (synth *HeroSynth) Render(out [][]float32) {
     for i := range out[0] {
         acum := [2]float64{0, 0}
 
-        for e := synth.runningVoices.Front(); e != nil; e = e.Next() {
-            voice := e.Value.(*Voice)
+        for i := range synth.runningVoices {
+            voice := &synth.voices[i]
             sample := voice.NextSample()
             acum[0] += sample[0]
             acum[1] += sample[1]
@@ -57,43 +55,21 @@ func (synth *HeroSynth) Render(out [][]float32) {
     }
 }
 
-func (synth *HeroSynth) allocVoice() *Voice {
-    //TODO add key as a parameter and update voices by key
-    var voice *Voice = nil;
-
-    if synth.availableVoices.Len() > 0 {
-        e := synth.availableVoices.Front()
-        voice = e.Value.(*Voice)
-        synth.availableVoices.Remove(e)
-    } else if synth.runningVoices.Len() > 0 {
-        // TODO There are no available voices, kill the oldest one
-        voice = synth.runningVoices.Front().Value.(*Voice)
-    } else {
-        return nil
-    }
-
-    synth.runningVoices.PushBack(voice)
-    synth.invNumRunningVoices = 1.0 / float64(synth.runningVoices.Len())
-
-    // TODO update patch
-
-    return voice
-}
-
 func (synth *HeroSynth) noteOn(key uint, velocity float64) {
-    voice := synth.allocVoice()
-    if voice != nil {
-        voice.noteOn(key, velocity)
+    voice := &synth.voices[key]
+    if _, isRunningVoice := synth.runningVoices[key]; !isRunningVoice {
+        synth.runningVoices[key] = true
+        delete(synth.availableVoices, key)
+        synth.invNumRunningVoices = 1 / float64(len(synth.runningVoices))
     }
-    //fmt.Println("---------------------------------------")
-    //for e := synth.runningVoices.Front(); e != nil; e = e.Next() {
-    //    voice := e.Value.(*Voice)
-    //    fmt.Println(voice)
-    //}
+    voice.noteOn(key, velocity)
 }
 
 func (synth *HeroSynth) noteOff(key uint) {
-
+    if _, isRunningVoice := synth.runningVoices[key]; isRunningVoice {
+        delete(synth.runningVoices, key)
+        synth.availableVoices[key] = true
+    }
 }
 
 func (synth *HeroSynth) Send(event Event) {
